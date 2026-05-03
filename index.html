@@ -12,30 +12,13 @@
         .logo { font-size: 18px; font-weight: bold; color: #58a6ff; }
         .content { padding: 20px; }
         .section-title { font-size: 13px; color: #8b949e; margin-bottom: 8px; display: block; font-weight: bold; }
-        
         select, input { width: 100%; padding: 12px; border-radius: 10px; background: #0d1117; color: #fff; border: 1px solid #30363d; margin-bottom: 12px; box-sizing: border-box; outline: none; }
-        
         .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-bottom: 10px; font-size: 14px; transition: 0.2s; }
         .btn-get { background: #238636; color: #fff; }
         .btn-get:hover { background: #2ea043; }
         .btn-copy { background: #00bcd4; color: #fff; margin-top: 10px; }
-
-        /* Khung hiển thị danh sách Key */
         .result-box { background: #0d1117; padding: 15px; border-radius: 12px; border: 1px solid #30363d; margin-top: 10px; display: none; }
-        .key-list-area { 
-            max-height: 200px; 
-            overflow-y: auto; 
-            text-align: left; 
-            font-family: monospace; 
-            color: #58a6ff; 
-            font-size: 14px; 
-            white-space: pre-wrap;
-            line-height: 1.6;
-            padding: 10px;
-            background: #090c10;
-            border-radius: 8px;
-        }
-
+        .key-list-area { max-height: 200px; overflow-y: auto; text-align: left; font-family: monospace; color: #58a6ff; font-size: 14px; white-space: pre-wrap; line-height: 1.6; padding: 10px; background: #090c10; border-radius: 8px; }
         .check-section { margin-top: 25px; padding-top: 20px; border-top: 1px solid #30363d; }
         .btn-check { background: #8957e5; color: #fff; }
         #check-info { font-size: 12px; margin-top: 10px; color: #39d353; line-height: 1.5; }
@@ -43,12 +26,11 @@
 </head>
 <body>
 
-<div class="card">
+<div id="main-ui" class="card">
     <div class="header">
         <div class="logo">⚡ FLUORITE MULTI-KEY</div>
         <div style="font-size: 10px; color: #8b949e;">SERVER V3</div>
     </div>
-
     <div class="content">
         <span class="section-title">CHỌN THỜI GIAN</span>
         <select id="duration">
@@ -56,18 +38,14 @@
             <option value="day7">Gói 7 Ngày</option>
             <option value="day30">Gói 30 Ngày</option>
         </select>
-
         <span class="section-title">SỐ LƯỢNG KEY CẦN LẤY</span>
         <input type="number" id="quantity" value="1" min="1" max="100">
-
         <button class="btn btn-get" onclick="getMultiKeys()">XÁC NHẬN LẤY KEY</button>
-
         <div id="result-container" class="result-box">
             <span class="section-title" style="color:#58a6ff;">DANH SÁCH KEY KÍCH HOẠT:</span>
             <div id="key-display-area" class="key-list-area"></div>
             <button class="btn btn-copy" onclick="copyAllKeys()">SAO CHÉP TẤT CẢ</button>
         </div>
-
         <div class="check-section">
             <span class="section-title">KIỂM TRA THỜI HẠN KEY</span>
             <input type="text" id="keyToCheck" placeholder="Nhập 1 key để check...">
@@ -78,26 +56,36 @@
 </div>
 
 <script>
+    // --- LOGIC PHẢN HỒI CHO APP ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const userKey = urlParams.get('key');
+
+    if (userKey) {
+        // Gộp tất cả key từ database để kiểm tra
+        const allValidKeys = [...KEY_DATABASE.day1, ...KEY_DATABASE.day7, ...KEY_DATABASE.day30];
+        
+        if (allValidKeys.includes(userKey)) {
+            // Nếu đúng key, xóa sạch giao diện và trả về SUCCESS thuần túy
+            document.body.innerHTML = "SUCCESS";
+            window.stop(); 
+        }
+    }
+
+    // --- LOGIC GIAO DIỆN QUẢN LÝ ---
     function getMultiKeys() {
         const type = document.getElementById('duration').value;
         const qty = parseInt(document.getElementById('quantity').value);
         const list = KEY_DATABASE[type];
         
         if (qty > list.length) {
-            alert("Số lượng key trong kho không đủ! Chỉ còn " + list.length + " key.");
+            alert("Kho không đủ key!");
             return;
         }
 
-        // Lấy ngẫu nhiên không trùng lặp
-        let shuffled = [...list].sort(() => 0.5 - Math.random());
-        let selectedKeys = shuffled.slice(0, qty);
-        
-        // Hiển thị ra màn hình
-        const displayArea = document.getElementById('key-display-area');
-        displayArea.innerText = selectedKeys.join('\n');
+        let selectedKeys = [...list].sort(() => 0.5 - Math.random()).slice(0, qty);
+        document.getElementById('key-display-area').innerText = selectedKeys.join('\n');
         document.getElementById('result-container').style.display = 'block';
 
-        // Lưu thời gian cho từng key (giả lập)
         const now = new Date().getTime();
         selectedKeys.forEach(k => {
             localStorage.setItem(k, JSON.stringify({ startTime: now, type: type }));
@@ -107,7 +95,7 @@
     function copyAllKeys() {
         const text = document.getElementById('key-display-area').innerText;
         navigator.clipboard.writeText(text);
-        alert("Đã sao chép tất cả key vào bộ nhớ tạm!");
+        alert("Đã sao chép!");
     }
 
     function checkOneKey() {
@@ -115,8 +103,14 @@
         const infoDiv = document.getElementById('check-info');
         const data = localStorage.getItem(k);
 
+        const allValidKeys = [...KEY_DATABASE.day1, ...KEY_DATABASE.day7, ...KEY_DATABASE.day30];
+
         if (!data) {
-            infoDiv.innerHTML = "<span style='color:#f85149;'>Key chưa tồn tại hoặc chưa kích hoạt!</span>";
+            if(allValidKeys.includes(k)) {
+                infoDiv.innerHTML = "Key hợp lệ (Chưa sử dụng)";
+            } else {
+                infoDiv.innerHTML = "<span style='color:#f85149;'>Key không tồn tại!</span>";
+            }
             return;
         }
 
@@ -126,11 +120,11 @@
         const remain = (info.startTime + dur) - now;
 
         if (remain <= 0) {
-            infoDiv.innerHTML = "<span style='color:#f85149;'>Key này đã hết hạn sử dụng!</span>";
+            infoDiv.innerHTML = "<span style='color:#f85149;'>Hết hạn!</span>";
         } else {
             const h = Math.floor(remain / 3600000);
             const m = Math.floor((remain % 3600000) / 60000);
-            infoDiv.innerHTML = `Hợp lệ: <b>${info.type}</b><br>Còn lại: <b>${h} giờ ${m} phút</b>`;
+            infoDiv.innerHTML = `Gói: ${info.type} - Còn: ${h}h ${m}m`;
         }
     }
 </script>
